@@ -12,8 +12,8 @@
     2. [Input format](#input)
     2. [Output format](#output)
 4. [Example](#example)
-    1. [Scalar integral: Double Box](#scalar-integral:-double-box)
-    2. [Raised power propagators: Triangle](#raised-power-propagators:-triangle)
+    1. [Scalar integral: Double Box](#exampleDoubleBox)
+    2. [Raised power propagators: Triangle](#exampleTriangle)
     3. [**Numerators**](#numerator)
 5. [Reference](#reference)
 
@@ -87,7 +87,7 @@ SetOptions[cLTD, "keep_FORM_script" -> True]
 The input must contain the **propagator** in the form:
  - `prop[momentum, mass]`
 
-One can multiply several such propagators to build its own topology. One such use can be found in the [double-box example](#scalar-integral:-double-box), or even sum several topologies together. In the latter case, they all need to contain the same amount of loops.
+One can multiply several such propagators to build its own topology. One such use can be found in the [double-box example](#exampleDoubleBox), or even sum several topologies together. In the latter case, they all need to contain the same amount of loops.
 
 The **numerator** can be expressed by means of one helper function:
  - `SP4[p1,p2]`: representation of the 4-dimensional scalar product between two momenta `p1` and `p2` using the metric `(1,-1,-1,-1)`.
@@ -119,7 +119,7 @@ The output contains:
 
 ## Example
 
-### Scalar integral: Double Box
+### Scalar integral: Double Box <a name="exampleDoubleBox"></a>
 For scalar propagators, one should use the helper function `prop[mom, mass]` in order to define the propagators that are present in the diagram:
 ```Mathematica
 (* Get cLTD and define path to FORM *)
@@ -142,7 +142,7 @@ expr = prop[k, m] * prop[k-p1, m] * prop[k+p2, m] * prop[k-l,0]\
      * prop[l+p2, m] * prop[l+p2+p3, m] * prop[l-p1, m];
 ```
 
-### Raised power propagators: Triangle
+### Raised power propagators: Triangle <a name="exampleTriangle"></a>
 The code also allows for raised powers in the propagators. 
 For the case of a triangle with off-shell externals, one will need to regulate the UV divergences in order to obtain a finite integral:
 
