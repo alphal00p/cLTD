@@ -264,7 +264,7 @@ Options[cLTD]={
 	"EvalAll"->False};
 cLTD[expression_,OptionsPattern[]]:=Module[{
 expr=If[Head[expression]===Plus,List@@expression, {expression}]/.Global`SP4[p1_,p2_]:> SP4[p1,p2][OptionValue["loopmom"]]/.toLTDprop[OptionValue["loopmom"]],
-energies,i=0,loop0subs, p0subs,spsubs,FORMinput, 
+energies,i=0,loop0subs, p0subs,spsubs,funsubs,FORMinput, 
 filenameID,
 runfilename,cLTDfilename,
 FORMpath,
@@ -278,6 +278,7 @@ PrintTemporary["Mapping variables for FORM expression"];
 (*Sanitisation*)
 cleanKs=Table[k->ToExpression["nonLoopk"<>ToString[i++]],{k, Complement[Table[ToExpression["k"<>ToString[n]],{n,0,9}],OptionValue["loopmom"]]}];i=0;
 cleanProps=Table[noLoopProp->ToExpression["noLoopProp"<>ToString[i++]],{noLoopProp,Union[Cases[expr,Global`prop[__],Infinity]]}];i=0;
+expr = expr/.cleanKs/.cleanProps;
 
 (*map FORM symbols to input values*)
 energies = Table[(While[!FreeQ[expr,ToExpression["E"<>ToString[i++]]],Null];ToExpression["E"<>ToString[i-1]])->e,{e,Last/@Union[Cases[expr,LTDprop[__],Infinity]]}];i=0;
@@ -285,11 +286,15 @@ loop0subs = Table[l->ToExpression["LTDk"<>ToString[i++]],{l,Select[OptionValue["
 If[Length[loop0subs] == 0, Print["No loop momenta"]; Abort[]];
 p0subs = Table[p0->ToExpression["p0Component"<>ToString[i++]],{p0, Union[Cases[expr,p_?(FreeQ[#,Alternatives@@OptionValue["loopmom"]]&)[0],Infinity]]}];i=0;
 (*Print[cleanProps];*)
-expr = expr/.ReplaceAll[energies,Rule[a_,b_]:>Rule[b,a]]/.cleanProps/.cleanKs/.p0subs/.Table[k[0]->k,{k,OptionValue["loopmom"]}];
+expr = expr/.ReplaceAll[energies,Rule[a_,b_]:>Rule[b,a]]/.p0subs/.Table[k[0]->k,{k,OptionValue["loopmom"]}];
 
 (*Check for scalar products in the numerator*)
 spsubs = Table[x->(While[!FreeQ[expr,ToExpression["sp"<>ToString[i++]]],Null];ToExpression["sp"<>ToString[i-1]]),{x,Union[Cases[expr,_Dot,Infinity]]}];i=0;
 expr = expr/.spsubs/.loop0subs;
+(*Remove Mathematica Functions*)
+funsubs=Table[fun->ToExpression["MMfunction"<>ToString[i++]],{fun,Select[Variables[expr],MatchQ[#,_?(#=!=cLTDPrivate`LTDprop&)[___]]&]}];i=0;
+expr = expr/.funsubs;
+funsubs=funsubs/.Reverse/@loop0subs;
 
 (*Extract FORM variable*)
 FORMvars = Join[FORMvars, Union[Flatten[Variables[#[[1]]]&/@Union[Cases[expr,_LTDprop,Infinity]]]]/.{
@@ -331,7 +336,11 @@ PrintTemporary["Retrieve result"];
 result=ToExpression[StringReplace[" "|"\\"|"\n"->""][Import[cLTDfilename,"Text"]]];
 If[!OptionValue["keep_FORM_script"],DeleteFile[{runfilename,cLTDfilename}]];
 PrintTemporary["Map back to mathematica variables"];
-result = result/.Reverse/@spsubs\
+Print[funsubs];
+Print[funsubs/.Reverse/@loop0subs];
+Print[loop0subs];
+result = result/.Reverse/@funsubs\
+				/.Reverse/@spsubs\
 				/.Reverse/@p0subs\
 				/.Reverse/@cleanKs\
 				/.Reverse/@cleanProps\
