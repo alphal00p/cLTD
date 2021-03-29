@@ -20,20 +20,24 @@
 
 ## Introduction
 The integration of a `n`-loop Feynman diagram requires the integrating over `4*n` dimensions.
-By means of the Loop-Tree duality, it's possible to bring down this integration to only `3*n` spacial dimensions. 
+By means of the Loop-Tree duality, it's possible to bring down this integration to only `3*n` spatial dimensions. 
 
 This new representation consists of the sum over all possible spanning tree of the original diagram. One of the major problems that one can encounter is that these terms will introduce a number of spurious singularities that could lead to a poor numerical integration convergence.
 
 Here we present a **Mathmatica Package** with the implementation of the algorithm presented in the paper [Manifestly Causal Loop-Tree Duality](https://arxiv.org/abs/2009.05509), where it was already implemented into a python script.
 
+The master formula reads:
+
+![master-formula](./img/master.svg)
+
 ## Dependencies
-* **Mathematica**: tested on Mathematica 2.0 and heigher.
-* **FORM**: can be downloaded from [here](https://www.nikhef.nl/~form/).
+* **Mathematica**: tested on Mathematica 12.0 and higher.
+* **FORM**: can be downloaded from [here](https://github.com/vermaseren/form/releases).
 
 ## Usage
 
 ### Import
-This package represents a Mathematica frontend and requires a working installation of [FORM](https://www.nikhef.nl/~form/) in order to run successfully.
+This package represents a Mathematica frontend and requires a working installation of [FORM](https://github.com/vermaseren/form/releases) in order to run successfully.
 If the cLTD folder is added to the libraries in Mathematica, one can import it with:
 ```Mathematica
 << cLTD`
@@ -62,7 +66,7 @@ Their usage is as follows:
 
 * `loopmom`: defines the variables that need to be considered loop momenta in the evaluated expression
 
-* `"FORM_path"`: By default, it assumes that the path to `form` is included in `$PATH`. If this is not the case, one can set this option to the required path.
+* `"FORMpath"`: By default, it assumes that the path to `form` is included in `$PATH`. If this is not the case, one can set this option to the required path.
 This must be either a absolute or relative path (no `~`):
 ```Mathematica
 SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"]
@@ -90,6 +94,7 @@ The input must contain the **propagator** in the form:
 One can multiply several such propagators to build its own topology. One such use can be found in the [double-box example](#exampleDoubleBox), or even sum several topologies together. In the latter case, they all need to contain the same amount of loops.
 
 The **numerator** can be expressed by means of one helper function:
+ - `Dot[p1,p2]` or `p1.p2`: Euclidean scalar product of the spatial component of two momenta
  - `SP4[p1,p2]`: representation of the 4-dimensional scalar product between two momenta `p1` and `p2` using the metric `(1,-1,-1,-1)`.
  
 
@@ -100,11 +105,12 @@ Some examples of valid numerator inputs (`k,l`: loop momenta, `p1,p2`: external 
 (*Unity*)
 num0 = 1;
 (*Using scalar products*)
-num1 = SP4[p1,k]+SP4[p2,k]+SP4[k,k];
+num1 = SP4[p1,k]+SP4[p2,k]+SP4[k,l];
 (*Energy polynomial*)
 num2 = k[0]*c1+l[0]*c2+k[0]*l[0]*c3+p1[0]*p2[0];
 (*Mixed*)
-num3 = k[0]*SP4[p1,l];
+num3 = k[0]*SP4[p1,l] + p2.l;
+num4 = k[0] p[0] - k.p (*Equivalent to SP4[k,p]*)
 ```
 
 Note that only the energy components of the loop momenta are actively involved during the evaluation of the residue.
@@ -113,7 +119,7 @@ Note that only the energy components of the loop momenta are actively involved d
 The output contains:
  - `cLTDnorm[expr]`: normalization factor, it correponds to `1/expr`.
  - `den[expr]`: denominators, can be evaluated as `1/expr`.
- - `p.q`: Euclidean scalar product of the spacial component of two momenta
+ - `p.q`: Euclidean scalar product of the spatial component of two momenta
  - `p[0]`: energy component of momentum `p`
 
 
@@ -161,7 +167,7 @@ cTriangleUV = cLTD[expr, loopmom -> {k}];
 ### Numerators
 The code also supports numerators. 
 
-One can include **Minkowky scalar products** by using `SP4[mom1,mom2]` in the expression.
+One can include **Minkowki scalar products** by using `SP4[mom1,mom2]` in the expression.
 
 For the one-loop photon self energy, the numerator takes the form:
 

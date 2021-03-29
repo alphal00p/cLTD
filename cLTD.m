@@ -11,7 +11,7 @@ BeginPackage["cLTD`"];
 (*Global *)
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Usage*)
 
 
@@ -273,8 +273,6 @@ FORMvars={}},
 
 (*Check that the reserved variables are not being used in the input*)
 If[!FreeQ[expression,Global`x|Global`xbar],Print["x and xbar are used internally by FORM. Pease use different variables in your expression"];Abort[]];
-If[!FreeQ[expression,Alternatives@@Table[ToExpression["E"<>ToString[i]],{i,0,Length[Union[Cases[expression,_prop,Infinity]]]-1}]],
-	Print["E# are reserved for the energies of the cLTD procedue. Pease use different variables in your expression"];Abort[]];
 
 PrintTemporary["Mapping variables for FORM expression"];
 (*Sanitisation*)
@@ -329,7 +327,7 @@ Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[l
 return = RunProcess[{FORMpath,runfilename},ProcessDirectory->OptionValue["WorkingDirectory"]];
 If[return["ExitCode"] != 0, Print[return]];
 
-PrintTemporary["Retrive result"];
+PrintTemporary["Retrieve result"];
 result=ToExpression[StringReplace[" "|"\\"|"\n"->""][Import[cLTDfilename,"Text"]]];
 If[!OptionValue["keep_FORM_script"],DeleteFile[{runfilename,cLTDfilename}]];
 PrintTemporary["Map back to mathematica variables"];
@@ -337,7 +335,8 @@ result = result/.Reverse/@spsubs\
 				/.Reverse/@p0subs\
 				/.Reverse/@cleanKs\
 				/.Reverse/@cleanProps\
-				/.Global`norm->cLTD`cLTDnorm;
+				/.Global`norm->cLTD`cLTDnorm\
+				/.cLTD`cLTDnorm[a_]:>cLTD`cLTDnorm[a *Power[-I,Length[loop0subs]]];
 				
 {Collect[result,_cLTDnorm], energies}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
 ]
