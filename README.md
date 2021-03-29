@@ -42,11 +42,15 @@ If the cLTD folder is added to the libraries in Mathematica, one can import it w
 ```Mathematica
 << cLTD`
 ```
-or alternatively:
+or by defining the location of the package:
 ```Mathematica
 Get["<path-to-package-folder>/cLTD.m"]
 ```
-
+or alternatively directly from github:
+```mathematica
+Import["https://github.com/apelloni/cLTD/raw/main/cLTD.m"]
+SetOptions[cLTD, WorkingDirectory -> "./"]
+```
 
 
 ### Options
