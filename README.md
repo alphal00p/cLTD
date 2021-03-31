@@ -63,7 +63,8 @@ Out[1]= {"loopmom" -> {k0, k1, k2, k3},
          "WorkingDirectory" -> NotebookDirectory[], 
          "FORM_ID" -> None,
          "keep_FORM_script" -> False, 
-         "EvalAll" -> False}
+         "EvalAll" -> False,
+         "NoNumerator" -> False}
 ```
 
 Their usage is as follows:
@@ -89,6 +90,7 @@ SetOptions[cLTD, "keep_FORM_script" -> True]
 ```
 
 * `EvalAll`: It substitute the `LTDnorm` and `den` functions.
+* `NoNumerator`: When computing the manifestly causal expression with a **constant numerator** one can se this value to `True`.  
 
 ### Input
 
@@ -126,6 +128,19 @@ The output contains:
  - `p.q`: Euclidean scalar product of the spatial component of two momenta
  - `p[0]`: energy component of momentum `p`
 
+The output consists of two values:
+`{<cLTD expression>, <Energy substitutions>}`
+```mathematica 
+(*Bubble output example*)
+<< cLTD`
+SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"];
+
+In[1]:= cLTD[prop[k, 0]*prop[k + p1, 0], loopmom -> {k}, EvalAll -> True]
+Out[1]= {
+        (1/(E0 + E1 - p1[0]) + 1/(E0 + E1 + p1[0]))/(I 4 E0 E1)), 
+        {E0 -> Sqrt[k.k], E1 -> Sqrt[k.k + 2 k.p1 + p1.p1]}
+    }
+```
 
 ## Example
 

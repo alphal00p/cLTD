@@ -66,7 +66,7 @@ Print[cLTD::usage];
 Begin["cLTDPrivate`"];
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*FORM file*)
 
 
@@ -81,10 +81,15 @@ set shifts:p0,...,p1000;
 ";
 
 
-FORMpf = "multiply norm(1)*num();
+FORMpf[filename_] := "multiply norm(1)*num();
 repeat id norm(E?)*prop(y0?,y1?) = norm(2*E*y1)*(den(y0-y1)-den(y0+y1)); 
 .sort
 
+#ifdef `NoNumerator'
+	#define NumeratorSwitch \"0\"
+#else
+	#define NumeratorSwitch \"1\"
+#endif
 * NOTE:
 *    This procedure follows what presented in the paper 2009.05509
 *    The only difference is that the numerator function is that the
@@ -96,7 +101,7 @@ repeat id norm(E?)*prop(y0?,y1?) = norm(2*E*y1)*(den(y0-y1)-den(y0+y1));
     id norm(n?) = norm(-n);
   
 * Activate numerator
-    id num(?y) = num(1,?y,ncmd());
+    id num(?y) = num(`NumeratorSwitch',?y,ncmd());
 
 * Identify poles in the loop momentum energy 
     splitarg (k`i') den;
@@ -164,6 +169,17 @@ repeat id norm(E?)*prop(y0?,y1?) = norm(2*E*y1)*(den(y0-y1)-den(y0+y1));
          exit \"Critical ERROR\";
     endif;
 #enddo
+
+* If there is no numerator call it a day
+#ifdef `NoNumerator'
+    id num(?x1, ncmd(n1?,n2?,?n3),?x2) = 0;
+	id num(?x1) = 1;
+	.sort
+	Format mathematica;
+	#write<"<>filename<>".out> \"%E\" F;
+	.end
+#endif
+
 ";
 
 
@@ -217,7 +233,7 @@ file = file <> "Auto S sp,"<>StringRiffle[ToString/@FORMvars,","]<>";\n";
 file = file <> "#define LOOPS \""<>ToString[nLoops]<>"\"\n";
 file = file <> "#define topoID \""<>filename<>"\"\n";
 file = file <> "L F = "<>expr<>";\n";
-file = file <> FORMpf <> "\n.sort\n";
+file = file <> FORMpf[filename] <> "\n.sort\n";
 file = file <> "L firstF = firstterm_(F);\n.sort\n#if ( termsin(firstF) != 0 )\n";
 file = file <> "#redefine oldextrasymbols \"`extrasymbols_'\"
 ExtraSymbols, underscore, den;
@@ -235,7 +251,7 @@ file
 ]
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Functions*)
 
 
@@ -261,14 +277,15 @@ Options[cLTD]={
 	"WorkingDirectory"->NotebookDirectory[],
 	"FORM_ID"->None, 
 	"keep_FORM_script"->False,
-	"EvalAll"->False};
+	"EvalAll"->False,
+	"NoNumerator"->False};
 cLTD[expression_,OptionsPattern[]]:=Module[{
 expr=If[Head[expression]===Plus,List@@expression, {expression}]/.Global`SP4[p1_,p2_]:> SP4[p1,p2][OptionValue["loopmom"]]/.toLTDprop[OptionValue["loopmom"]],
 energies,i=0,loop0subs, p0subs,spsubs,funsubs,FORMinput, 
 filenameID,
 runfilename,cLTDfilename,
 FORMpath,
-result, return,cleanKs,cleanProps,
+exec,result, return,cleanKs,cleanProps,
 FORMvars={}},
 
 (*Check that the reserved variables are not being used in the input*)
@@ -329,25 +346,26 @@ cLTDfilename=OptionValue["WorkingDirectory"]<>"/cLTD_out_"<>ToString[filenameID]
 (*Print[{FORMpath,runfilename}];*)
 (*Print[FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],alPATH]];*)
 Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars],"Text"];
-return = RunProcess[{FORMpath,runfilename},ProcessDirectory->OptionValue["WorkingDirectory"]];
+
+exec=If[OptionValue["NoNumerator"],
+	{FORMpath,"-D", "NoNumerator",runfilename},
+	{FORMpath,runfilename}];
+return = RunProcess[exec,ProcessDirectory->OptionValue["WorkingDirectory"]];
 If[return["ExitCode"] != 0, Print[return]];
 
 PrintTemporary["Retrieve result"];
 result=ToExpression[StringReplace[" "|"\\"|"\n"->""][Import[cLTDfilename,"Text"]]];
 If[!OptionValue["keep_FORM_script"],DeleteFile[{runfilename,cLTDfilename}]];
 PrintTemporary["Map back to mathematica variables"];
-Print[funsubs];
-Print[funsubs/.Reverse/@loop0subs];
-Print[loop0subs];
 result = result/.Reverse/@funsubs\
 				/.Reverse/@spsubs\
 				/.Reverse/@p0subs\
-				/.Reverse/@cleanKs\
 				/.Reverse/@cleanProps\
+				/.Reverse/@cleanKs\
 				/.Global`norm->cLTD`cLTDnorm\
 				/.cLTD`cLTDnorm[a_]:>cLTD`cLTDnorm[a *Power[-I,Length[loop0subs]]];
 				
-{Collect[result,_cLTDnorm], energies}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
+{Collect[result,_cLTDnorm], energies/.Reverse/@cleanKs}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
 ]
 
 
