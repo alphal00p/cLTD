@@ -82,7 +82,7 @@ SetOptions[cLTD,
     "tFORM_path" -> "/home/dude/dir1/dir2/bin/tform"]
 ```
 
-*`FORMcores`: Is positive integer defining with how many cores to run the FORM script.
+* `FORMcores`: Is positive integer defining with how many cores to run the FORM script.
 
 * `WorkingDirectory`: FORM will need to create some temporary files in order to process the expression. By default, this happens in the same folder as the current Mathematica notebook.
 
