@@ -31,7 +31,7 @@ The master formula reads:
 ![master-formula](./img/master.svg)
 
 ## Dependencies
-* **Mathematica**: tested on Mathematica 12.0 and higher.
+* **Mathematica**: tested on Mathematica 11.0 and higher.
 * **FORM**: can be downloaded from [here](https://github.com/vermaseren/form/releases).
 
 ## Usage
@@ -60,6 +60,8 @@ There are several options that can be set when calling the `cLTD` function. The 
 In[1]:= Options[cLTD]
 Out[1]= {"loopmom" -> {k0, k1, k2, k3}, 
          "FORMpath" -> "form", 
+         "tFORMpath" -> "tform", 
+         "FORMcores" -> 1 
          "WorkingDirectory" -> NotebookDirectory[], 
          "FORM_ID" -> None,
          "keep_FORM_script" -> False, 
@@ -71,11 +73,16 @@ Their usage is as follows:
 
 * `loopmom`: defines the variables that need to be considered loop momenta in the evaluated expression
 
-* `"FORMpath"`: By default, it assumes that the path to `form` is included in `$PATH`. If this is not the case, one can set this option to the required path.
-This must be either a absolute or relative path (no `~`):
+* `FORMpath`: By default, it assumes that the path to `form` is included in `$PATH`. If this is not the case, one can set this option to the required path.
+* `tFORMpath`: By default, it assumes that the path to `tform` is included in `$PATH`. If this is not the case, one can set this option to the required path.
+
 ```Mathematica
-SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"]
+SetOptions[cLTD, 
+    "FORM_path" -> "/home/dude/dir1/dir2/bin/form",
+    "tFORM_path" -> "/home/dude/dir1/dir2/bin/tform"]
 ```
+
+*`FORMcores`: Is positive integer defining with how many cores to run the FORM script.
 
 * `WorkingDirectory`: FORM will need to create some temporary files in order to process the expression. By default, this happens in the same folder as the current Mathematica notebook.
 

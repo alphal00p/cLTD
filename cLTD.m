@@ -251,7 +251,7 @@ file
 ]
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*Functions*)
 
 
@@ -274,8 +274,10 @@ SP4[p_,q_][loopmom_]:=If[FreeQ[loopmom,p],p[0],p]*If[FreeQ[loopmom,q],q[0],q] - 
 Options[cLTD]={
 	"loopmom"->{Global`k0,Global`k1,Global`k2,Global`k3},
 	"FORMpath"->"form",
+	"tFORMpath"->"tform",
 	"WorkingDirectory"->NotebookDirectory[],
-	"FORM_ID"->None, 
+	"FORM_ID"->None,
+	"FORMcores"-> 1, 
 	"keep_FORM_script"->False,
 	"EvalAll"->False,
 	"NoNumerator"->False};
@@ -331,10 +333,16 @@ FORMinput=StringReplace[{"cLTDPrivate`"->"","LTD"->"","[":>"(","]"->")"}][ToStri
 
 PrintTemporary["Execute FORM"];
 (*FORM Executable*)
-FORMpath=If[
-OptionValue["FORMpath"]=="form", "form",
-FileInformation[OptionValue["FORMpath"],"AbsoluteFileName"]
+If[Head[OptionValue["FORMcores"]]=!=Integer, Print["FORMcores must be an integer"]; Abort[]];
+If[Head[OptionValue["FORMcores"]]<1, Print["FORMcores must be a positive integer"]; Abort[]];
+FORMpath=If[OptionValue["FORMcores"]>1,
+ If[OptionValue["tFORMpath"]=="tform","tform",
+    FileInformation[OptionValue["tFORMpath"],"AbsoluteFileName"]],
+ If[OptionValue["FORMpath"]=="form","form",
+    FileInformation[OptionValue["FORMpath"],"AbsoluteFileName"]]
 ];
+If[FORMpath=!="form"&& FORMpath=!="tform"&&
+FileInformation[OptionValue["FORMpath"],"AbsoluteFileName"]==={},Print["Cannot find ",OptionValue["FORMpath"]];Abort[]];
 
 (*Call FORM*)
 filenameID=If[OptionValue["FORM_ID"]===None,
@@ -348,8 +356,8 @@ cLTDfilename=OptionValue["WorkingDirectory"]<>"/cLTD_out_"<>ToString[filenameID]
 Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars],"Text"];
 
 exec=If[OptionValue["NoNumerator"],
-	{FORMpath,"-D", "NoNumerator",runfilename},
-	{FORMpath,runfilename}];
+	{FORMpath,If[OptionValue["FORMcores"]>1,"-w"<>ToString[OptionValue["FORMcores"]],Nothing],"-D", "NoNumerator",runfilename},
+	{FORMpath,If[OptionValue["FORMcores"]>1,"-w"<>ToString[OptionValue["FORMcores"]],Nothing],runfilename}];
 return = RunProcess[exec,ProcessDirectory->OptionValue["WorkingDirectory"]];
 If[return["ExitCode"] != 0, Print[return]];
 
