@@ -81,7 +81,7 @@ set shifts:p0,...,p1000;
 ";
 
 
-FORMpf[filename_] := "multiply norm(1)*num();
+FORMpf[filename_,OptimizationLVL_] := "multiply norm(1)*num();
 repeat id norm(E?)*prop(y0?,y1?) = norm(2*E*y1)*(den(y0-y1)-den(y0+y1)); 
 .sort
 
@@ -176,6 +176,10 @@ repeat id norm(E?)*prop(y0?,y1?) = norm(2*E*y1)*(den(y0-y1)-den(y0+y1));
 	id num(?x1) = 1;
 	.sort
 	Format mathematica;
+	Format O"<>ToString[OptimizationLVL]<>", stats=on, method=greedy;
+    ExtraSymbols, array, FormEvalStep;
+	#Optimize F;
+	#write<"<>filename<>".out> \"%O\";
 	#write<"<>filename<>".out> \"%E\" F;
 	.end
 #endif
@@ -226,14 +230,14 @@ endif;
 ";
 
 
-FORMfile[filename_,expr_,nLoops_,FORMvars_]:=Module[{
+FORMfile[filename_,expr_,nLoops_,FORMvars_,OptimizationLVL_]:=Module[{
 file="#--\n"},
 file = file <> FORMhead;
 file = file <> "Auto S sp,"<>StringRiffle[ToString/@FORMvars,","]<>";\n";
 file = file <> "#define LOOPS \""<>ToString[nLoops]<>"\"\n";
 file = file <> "#define topoID \""<>filename<>"\"\n";
 file = file <> "L F = "<>expr<>";\n";
-file = file <> FORMpf[filename] <> "\n.sort\n";
+file = file <> FORMpf[filename,OptimizationLVL] <> "\n.sort\n";
 file = file <> "L firstF = firstterm_(F);\n.sort\n#if ( termsin(firstF) != 0 )\n";
 file = file <> "#redefine oldextrasymbols \"`extrasymbols_'\"
 ExtraSymbols, underscore, den;
@@ -246,7 +250,14 @@ file = file <> "#if `oldextrasymbols' != `newextrasymbols'\n";
 file = file <> "multiply replace_(<den{`oldextrasymbols'+1}_,den(extrasymbol_({`oldextrasymbols'+1}))>\\
                   ,...,<den`extrasymbols_'_,den(extrasymbol_(`extrasymbols_'))>);\n";
 file = file <> "#endif\n";
-file = file <> "#endif\n.sort\nFormat mathematica;\n#write<"<>filename<>".out> \"%E\" F;\n.end";
+file = file <> "#endif\n.sort";
+file = file <> "
+Format mathematica;
+Format O"<>ToString[OptimizationLVL]<>", stats=on, method=greedy;
+ExtraSymbols, array, FormEvalStep;
+#Optimize F;
+#write<"<>filename<>".out> \"%O\";
+#write<"<>filename<>".out> \"%E\" F;\n.end";
 file
 ]
 
@@ -275,19 +286,22 @@ Options[cLTD]={
 	"loopmom"->{Global`k0,Global`k1,Global`k2,Global`k3},
 	"FORMpath"->"form",
 	"tFORMpath"->"tform",
-	"WorkingDirectory"->NotebookDirectory[],
+	"WorkingDirectory"->Check[NotebookDirectory[],Print["Cannot find Notebook Directory!\nMust define the WorkingDirectory option before running."]; None] // Quiet,
 	"FORM_ID"->None,
 	"FORMcores"-> 1, 
+	"OptimizationLVL"->0,
 	"keep_FORM_script"->False,
 	"EvalAll"->False,
-	"NoNumerator"->False};
+	"NoNumerator"->False,
+	"FORMsubs"->False
+};
 cLTD[expression_,OptionsPattern[]]:=Module[{
 expr=If[Head[expression]===Plus,List@@expression, {expression}]/.Global`SP4[p1_,p2_]:> SP4[p1,p2][OptionValue["loopmom"]]/.toLTDprop[OptionValue["loopmom"]],
 energies,i=0,loop0subs, p0subs,spsubs,funsubs,FORMinput, 
 filenameID,
 runfilename,cLTDfilename,
 FORMpath,
-exec,result, return,cleanKs,cleanProps,
+exec,result, return,cleanKs,cleanProps,FormEvalStep,
 FORMvars={}},
 
 (*Check that the reserved variables are not being used in the input*)
@@ -326,6 +340,8 @@ FORMvars = Join[FORMvars, Variables[expr]/.{
 	}];
 FORMvars = Union[FORMvars];
 
+If[OptionValue["FORMsubs"],Return[{Reverse/@Join[funsubs,spsubs,p0subs,cleanProps,cleanKs], energies/.Reverse/@cleanKs}]];
+
 (*Create strings to send to FORM*)
 PrintTemporary["Create FORM expression"];
 FORMinput=StringReplace[{"cLTDPrivate`"->"","LTD"->"","[":>"(","]"->")"}][ToString[Plus@@expr,InputForm]];
@@ -334,7 +350,9 @@ FORMinput=StringReplace[{"cLTDPrivate`"->"","LTD"->"","[":>"(","]"->")"}][ToStri
 PrintTemporary["Execute FORM"];
 (*FORM Executable*)
 If[Head[OptionValue["FORMcores"]]=!=Integer, Print["FORMcores must be an integer"]; Abort[]];
-If[Head[OptionValue["FORMcores"]]<1, Print["FORMcores must be a positive integer"]; Abort[]];
+If[OptionValue["FORMcores"]<1, Print["FORMcores must be a positive integer"]; Abort[]];
+If[Head[OptionValue["OptimizationLVL"]]=!=Integer, Print["OptimizationLVL must be an integer"]; Abort[]];
+If[!(0<=OptionValue["OptimizationLVL"]<=4), Print["OptimizationLVL must be an integer between 0 and 4"]; Abort[]];
 FORMpath=If[OptionValue["FORMcores"]>1,
  If[OptionValue["tFORMpath"]=="tform","tform",
     FileInformation[OptionValue["tFORMpath"],"AbsoluteFileName"]],
@@ -353,7 +371,7 @@ runfilename=OptionValue["WorkingDirectory"]<>"/cLTD_"<>ToString[filenameID]<>".f
 cLTDfilename=OptionValue["WorkingDirectory"]<>"/cLTD_out_"<>ToString[filenameID]<>".out";
 (*Print[{FORMpath,runfilename}];*)
 (*Print[FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],alPATH]];*)
-Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars],"Text"];
+Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars,OptionValue["OptimizationLVL"]],"Text"];
 
 exec=If[OptionValue["NoNumerator"],
 	{FORMpath,If[OptionValue["FORMcores"]>1,"-w"<>ToString[OptionValue["FORMcores"]],Nothing],"-D", "NoNumerator",runfilename},
@@ -362,7 +380,7 @@ return = RunProcess[exec,ProcessDirectory->OptionValue["WorkingDirectory"]];
 If[return["ExitCode"] != 0, Print[return]];
 
 PrintTemporary["Retrieve result"];
-result=ToExpression[StringReplace[" "|"\\"|"\n"->""][Import[cLTDfilename,"Text"]]];
+result=ToExpression[StringReplace[{" "|"\\"|"\n"->"","FormEvalStep("~~x:DigitCharacter..~~")":>ToString[FormEvalStep]~~"["~~x~~"]"}][Import[cLTDfilename,"Text"]]];
 If[!OptionValue["keep_FORM_script"],DeleteFile[{runfilename,cLTDfilename}]];
 PrintTemporary["Map back to mathematica variables"];
 result = result/.Reverse/@funsubs\
@@ -372,9 +390,11 @@ result = result/.Reverse/@funsubs\
 				/.Reverse/@cleanKs\
 				/.Global`norm->cLTD`cLTDnorm\
 				/.cLTD`cLTDnorm[a_]:>cLTD`cLTDnorm[a *Power[-I,Length[loop0subs]]];
-				
-{Collect[result,_cLTDnorm], energies/.Reverse/@cleanKs}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
+	
+{If[OptionValue["OptimizationLVL"]==0,Collect[result,_cLTDnorm],result],
+ energies/.Reverse/@cleanKs}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
 ]
+SetAttributes[cLTD,Protected];
 
 
 End[];
