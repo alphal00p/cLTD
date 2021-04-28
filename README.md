@@ -193,7 +193,7 @@ cTriangleUV = cLTD[expr, loopmom -> {k}];
 ### Numerators
 The code also supports numerators. 
 
-One can include **Minkowki scalar products** by using `SP4[mom1,mom2]` in the expression.
+One can include **Minkowski scalar products** by using `SP4[mom1,mom2]` in the expression.
 
 For the one-loop photon self energy, the numerator takes the form:
 
@@ -214,7 +214,6 @@ cPhotonSelf = cLTD[numerator * props, loopmom -> {k}];
 ```
 
 It could be that the numerator cannot be written in terms of scalar products; in this case, one should write the numerator as a polynomial in the loop momenta's energy components.
-
 
 ## Reference 
 If you use this program, please cite the corresponding work on which the procedure is based on:
