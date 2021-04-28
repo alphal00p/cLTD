@@ -28,14 +28,7 @@ The numerator can also be a polynomial in the loop momenta's energy
 components
     -> e.g.: k[0]*p1[0] - p1[0]*p2[0] (k: loop momentum) 
 
-"<>Style["Options",Bold]~ToString~StandardForm<>": {
-          \"loopmom\"->{loopmomsymbol1,loopmomsymbol2,...} (default: {k1,k2,k3,k4})
-          \"FORMpath\"\[Rule]\"form\",
-          \"WorkingDirectory\"\[Rule]Directory[],
-          \"FORM_ID\"\[Rule]None,
-          \"keep_FORM_script\"\[Rule]False,
-          \"EvalAll\"\[Rule]False
-}
+"<>Style["Options",Bold]~ToString~StandardForm<>": 
 	To change change the default options to different values use SetOptions[cLTD,...]:
 	e.g.:
 		Use `form` in the alphaloop directory "<>Style["SetOptions[cLTD,\"FORMpath\"\[Rule]\"/home/dude/dir1/dir2/form\"]",Bold]~ToString~StandardForm<>"
@@ -50,13 +43,14 @@ WARNING: when summing multiple diagrams, they must contain the same
 
 "<>Style["Output",Bold]~ToString~StandardForm<>":
   { cLTD expression, Energies definition} 
-  The expression contains the den[] and cLTDnorm[] function which are to be evaluated as 
+  The expression contains the functions den[] and cLTDnorm[] which are to be evaluated as 
 		den[a_] :> 1/a, cLTDnorm[a_] :> 1/a
 ";
 
 Print[" :::::::::::::::::::::::: cLTD ::::::::::::::::::::::::"]
-Print["Authors: Z. Capatti, V. Hirschi, D. Kermanschah, A. Pelloni, B. Ruijl\n"];
-Print[cLTD::usage];
+Print["Authors: Z. Capatti, V. Hirschi, D. Kermanschah, A. Pelloni, B. Ruijl"];
+Print["\tA Mathematica front end for cLTD [arxiv:2009.05509].\n"];
+(*Print[cLTD::usage];*)
 
 
 (* ::Section:: *)
@@ -66,7 +60,7 @@ Print[cLTD::usage];
 Begin["cLTDPrivate`"];
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*FORM file*)
 
 
@@ -262,7 +256,7 @@ file
 ]
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Functions*)
 
 
