@@ -24,7 +24,7 @@ By means of the Loop-Tree duality, it's possible to bring down this integration 
 
 This new representation consists of the sum over all possible spanning tree of the original diagram. One of the major problems that one can encounter is that these terms will introduce a number of spurious singularities that could lead to a poor numerical integration convergence.
 
-Here we present a **Mathmatica Package** with the implementation of the algorithm presented in the paper [Manifestly Causal Loop-Tree Duality](https://arxiv.org/abs/2009.05509), where it was already implemented into a python script.
+Here we present a **Mathematica Package** with the implementation of the algorithm presented in the paper [Manifestly Causal Loop-Tree Duality](https://arxiv.org/abs/2009.05509), where it was already implemented into a python script.
 
 The master formula reads:
 
@@ -130,7 +130,7 @@ Note that only the energy components of the loop momenta are actively involved d
 
 ### Output
 The output contains:
- - `cLTDnorm[expr]`: normalization factor, it correponds to `1/expr`.
+ - `cLTDnorm[expr]`: normalization factor, it corresponds to `1/expr`.
  - `den[expr]`: denominators, can be evaluated as `1/expr`.
  - `p.q`: Euclidean scalar product of the spatial component of two momenta
  - `p[0]`: energy component of momentum `p`
@@ -158,7 +158,7 @@ For scalar propagators, one should use the helper function `prop[mom, mass]` in 
 << cLTD`
 SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"];
 
-(* Doube box *)
+(* Double box *)
 expr = prop[k, 0] * prop[k-p1, 0] * prop[k+p2, 0] * prop[k-l,0]\
      * prop[l+p2, 0] * prop[l+p2+p3, 0] * prop[l-p1, 0];
 
@@ -169,7 +169,7 @@ In order to numerically integrate the expression above in the remaining 6 dimens
 
 It is always possible to consider a massive box:
 ```Mathematica
-(* Massive Doube box *)
+(* Massive Double box *)
 expr = prop[k, m] * prop[k-p1, m] * prop[k+p2, m] * prop[k-l,0]\
      * prop[l+p2, m] * prop[l+p2+p3, m] * prop[l-p1, m];
 ```
