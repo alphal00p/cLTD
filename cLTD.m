@@ -66,6 +66,7 @@ Begin["cLTDPrivate`"];
 
 FORMhead = "Format 100;
 Auto S n,y,E,p,k;
+S iComplex;
 CF ncmd, num, Eres, Echain;
 CF den, prop, norm, error;
 CF x, xbar;
@@ -338,7 +339,7 @@ If[OptionValue["FORMsubs"],Return[{Reverse/@Join[funsubs,spsubs,p0subs,cleanProp
 
 (*Create strings to send to FORM*)
 PrintTemporary["Create FORM expression"];
-FORMinput=StringReplace[{"cLTDPrivate`"->"","LTD"->"","[":>"(","]"->")"}][ToString[Plus@@expr,InputForm]];
+FORMinput=StringReplace[{"cLTDPrivate`"->"","LTD"->"","[":>"(","]"->")","I"->"iComplex"}][ToString[Plus@@expr,InputForm]];
 (*Print[FORMinput];*)
 
 PrintTemporary["Execute FORM"];
@@ -383,8 +384,9 @@ result = result/.Reverse/@funsubs\
 				/.Reverse/@cleanProps\
 				/.Reverse/@cleanKs\
 				/.Global`norm->cLTD`cLTDnorm\
-				/.cLTD`cLTDnorm[a_]:>cLTD`cLTDnorm[a *Power[-I,Length[loop0subs]]];
-	
+				/.cLTD`cLTDnorm[a_]:>cLTD`cLTDnorm[a *Power[-I,Length[loop0subs]]]\
+				/.Global`iComplex->I;
+
 {If[OptionValue["OptimizationLVL"]==0,Collect[result,_cLTDnorm],result],
  energies/.Reverse/@cleanKs}//.If[OptionValue["EvalAll"],{Global`den[a_]:>1/a,cLTD`cLTDnorm[a_]:>1/a}, {}]
 ]
