@@ -5,7 +5,7 @@ These loop lines are encoded in terms of the combination of loop momenta flowing
 
 
 For the case of two-loop Feynman diagrams, any topology can be expressed in terms of three loop lines. 
-One choice of the flows of the loop momenta can be $k$, $l$, and $k-l$, or written in terms of signatures for the basis $(k, l)$: `[[1, 0], [0, 1], [1, -1]]`.
+One choice of the flows of the loop momenta can be `k`, `l`, and `k-l`, or written in terms of signatures for the basis `(k, l)`: `[[1, 0], [0, 1], [1, -1]]`.
 
 
 ### Example:
@@ -53,4 +53,5 @@ d1 = +1*E0-1*p0+1*E1+1*p1+1*E2+1*p2;
 ```
 where `invd<i>= 1/d<i>`. 
 
-The `FORM` expression `F` is valid for arbitrary numerators in $k^0$ and $l^0$, the expression corresponding to a specific numerator has to be unfolded using [`pf_numerator.frm`](./pf_numerator.frm), where `num(ncmd(x1), ncmd(x2))` represents $\text{N}_\mathcal{N}([x_1],[x_2])$, as described in Appendix B of the paper.
+The `FORM` expression `F` is valid for arbitrary numerators in the loop momenta energies. 
+The expression corresponding to a specific numerator has to be unfolded using [`pf_numerator.frm`](./pf_numerator.frm), where `num(ncmd(x1), ncmd(x2))` represents the multi-loop divided difference as described in Appendix B of the paper.
