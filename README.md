@@ -78,8 +78,8 @@ Their usage is as follows:
 
 ```Mathematica
 SetOptions[cLTD, 
-    "FORM_path" -> "/home/dude/dir1/dir2/bin/form",
-    "tFORM_path" -> "/home/dude/dir1/dir2/bin/tform"]
+    "FORMpath" -> "/home/dude/dir1/dir2/bin/form",
+    "tFORMpath" -> "/home/dude/dir1/dir2/bin/tform"]
 ```
 
 * `FORMcores`: Is positive integer defining with how many cores to run the FORM script.
@@ -140,7 +140,7 @@ The output consists of two values:
 ```mathematica 
 (*Bubble output example*)
 << cLTD`
-SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"];
+SetOptions[cLTD, "FORMpath" -> "/home/dude/dir1/dir2/bin/form"];
 
 In[1]:= cLTD[prop[k, 0]*prop[k + p1, 0], loopmom -> {k}, EvalAll -> True]
 Out[1]= {
@@ -156,7 +156,7 @@ For scalar propagators, one should use the helper function `prop[mom, mass]` in 
 ```Mathematica
 (* Get cLTD and define path to FORM *)
 << cLTD`
-SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"];
+SetOptions[cLTD, "FORMpath" -> "/home/dude/dir1/dir2/bin/form"];
 
 (* Doube box *)
 expr = prop[k, 0] * prop[k-p1, 0] * prop[k+p2, 0] * prop[k-l,0]\
@@ -181,7 +181,7 @@ For the case of a triangle with off-shell externals, one will need to regulate t
 ```Mathematica
 (* Get cLTD and define path to FORM *)
 << cLTD`
-SetOptions[cLTD, "FORM_path" -> "/home/dude/dir1/dir2/bin/form"];
+SetOptions[cLTD, "FORMpath" -> "/home/dude/dir1/dir2/bin/form"];
 
 (* TriangleBox - UV CT *)
 expr = prop[k, 0] * prop[k-p1, 0] * prop[k+p2, 0] - prop[k, mUV]^3;
