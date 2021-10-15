@@ -67,6 +67,7 @@ Out[1]= {"loopmom" -> {k0, k1, k2, k3},
          "keep_FORM_script" -> False, 
          "EvalAll" -> False,
          "NoNumerator" -> False}
+         "stdLTD" -> False}
 ```
 
 Their usage is as follows:
@@ -98,6 +99,7 @@ SetOptions[cLTD, "keep_FORM_script" -> True]
 
 * `EvalAll`: It substitute the `LTDnorm` and `den` functions.
 * `NoNumerator`: When computing the manifestly causal expression with a **constant numerator** one can se this value to `True`.  
+* `stdLTD`: Produce the standard LTD representation.  
 
 ### Input
 

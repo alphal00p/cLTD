@@ -11,7 +11,7 @@ BeginPackage["cLTD`"];
 (*Global *)
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*Usage*)
 
 
@@ -60,20 +60,24 @@ Print["\tA Mathematica front end for cLTD [arxiv:2009.05509].\n"];
 Begin["cLTDPrivate`"];
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*FORM file*)
 
 
 FORMhead = "Format 100;
-Auto S n,y,E,p,k;
+Auto S n,m,y,E,p,k;
 S iComplex;
-CF ncmd, num, Eres, Echain;
-CF den, prop, norm, error;
+CF ncmd, num, Eres, Echain, Diff;
+CF den, prop, prop0, norm, error;
 CF x, xbar;
 
 set energies:E0,...,E1000;
 set shifts:p0,...,p1000;
 ";
+
+
+(* ::Subsubsection::Closed:: *)
+(*cLTD*)
 
 
 FORMpf[filename_,OptimizationLVL_] := "multiply norm(1)*num();
@@ -225,28 +229,113 @@ endif;
 ";
 
 
-FORMfile[filename_,expr_,nLoops_,FORMvars_,OptimizationLVL_]:=Module[{
+(* ::Subsubsection:: *)
+(*LTD*)
+
+
+FORMltd[filename_] := "multiply norm(1)*num();
+
+* NOTE:
+*   Compute the LTD expression for arbitrary topologies 
+id prop(?a) = prop(?a,1);
+#do i=0,{`LOOPS'-1}
+    B+ prop k`i' norm num;
+    .sort:loop-{`i'+1};
+    keep brackets;
+* Deal with powers 
+    repeat id prop(?a,n1?)*prop(?a,n2?) = prop(?a,n1+n2);
+
+* Identify poles in the loop momentum energy 
+    splitarg (k`i') prop;
+    id prop(k`i',E?,n?) = prop0(k`i',0,E,n); 
+    id prop(p?,k?,E?,n?) = prop0(k,p,E,n); 
+
+    factarg (-1) prop0 1;
+    id prop0(k`i',y?{-1,1},E?,n?) = prop0(k`i',y,0,E,n); 
+    id all prop0(k?,y?{-1,1},p?,E?,n?)*norm(n0?) = 
+        sum_(m,0,n-1,
+            (-1)^(n-m-1)*fac_(2*n-m-2)/fac_(n-m-1)/fac_(m)*
+            Diff(k`i',m)*norm(n0*(2*E)^(2*n-m-2))
+            )/fac_(n-1)*
+        x(y*p,0,E)*x(y*p,E,0); 
+
+* Apply differential
+    repeat;
+         repeat id Diff(k`i',n1?{>0})*prop0(k`i',y?{-1,1},p?,E?,n2?) =  
+             +Diff(k`i',n1)*prop(k`i',y,p,E,n2)
+             -Diff(k`i',n1-1,0)*(2*n2*(k`i'+y*p))*prop0(k`i',y,p,E,n2+1) 
+         ; 
+         id Diff(k`i',n1?{>0})*k`i'^n3? =
+             +n3*Diff(k`i',n1-1,0)*k`i'^(n3-1)
+             ; 
+         id Diff(k`i',n?{>0})= 0;
+         id Diff(k`i',n?,0)=Diff(k`i',n);
+         id prop(k`i',y?{-1,1},p?,E?,n2?) = prop0(k`i',y,p,E,n2);
+    endrepeat;
+    id Diff(k`i',0)=1;
+    id prop0(k?,y?{-1,1},?a) = prop(y*k,?a); 
+
+* check for errors
+    if (count(Diff,1));
+         print \"Remaining differenctial operators: %t\";
+         exit \"Critical ERROR\";
+    endif;
+
+* Split the poles by their position in the complex plane
+    splitarg x;
+    repeat id x(?y1,+E?energies,?y2,E1?,E2?) = x(?y1,?y2,E1+E,E2);
+    repeat id x(?y1,-E?energies,?y2,E1?,E2?) = x(?y1,?y2,E1,E2+E);
+    id x(E1?,E2?) = x(0,E1,E2);
+
+* check for errors
+    id x(?y,0,0) = error(x(?y,0,0));
+    if (count(error,1));
+         print \"[k`i'] Cannot find energy signature %t\";
+         exit \"Critical ERROR\";
+    endif;
+    transform, x, prop, addargs(1,last-2);
+
+* take residue
+    id x(p?,0,E?)*x(p?,E1?,E2?)*norm(n?)*num(?y) = replace_(k`i',E-p)*norm(n*(E+E1-E2))*num(?y,E-p);
+    if ( count(x,1) ) discard;
+#enddo
+id prop(?a,n?) = prop(?a)^n;
+id prop(p?,E?) = den(p^2-E^2);
+id num(?a) = 1;
+
+";
+
+
+(* ::Subsubsection::Closed:: *)
+(*Generate FORM file*)
+
+
+FORMfile[filename_,expr_,nLoops_,FORMvars_,OptimizationLVL_,stdLTD_:False]:=Module[{
 file="#--\n"},
 file = file <> FORMhead;
 file = file <> "Auto S sp,"<>StringRiffle[ToString/@FORMvars,","]<>";\n";
 file = file <> "#define LOOPS \""<>ToString[nLoops]<>"\"\n";
 file = file <> "#define topoID \""<>filename<>"\"\n";
 file = file <> "L F = "<>expr<>";\n";
-file = file <> FORMpf[filename,OptimizationLVL] <> "\n.sort\n";
-file = file <> "L firstF = firstterm_(F);\n.sort\n#if ( termsin(firstF) != 0 )\n";
-file = file <> "#redefine oldextrasymbols \"`extrasymbols_'\"
+If[stdLTD, 
+	file = file <> FORMltd[filename] <> "\n.sort\n";	
+,
+	file = file <> FORMpf[filename,OptimizationLVL] <> "\n.sort\n";
+	file = file <> "L firstF = firstterm_(F);\n.sort\n#if ( termsin(firstF) != 0 )\n";
+	file = file <> "#redefine oldextrasymbols \"`extrasymbols_'\"
 ExtraSymbols, underscore, den;
 hide firstF;
 argtoextrasymbol den;
 id den(y?) = y;
 .sort:den;\n#redefine newextrasymbols \"`extrasymbols_'\"\noff statistics;\n";
-file = file <> FORMnum[nLoops]; 
-file = file <> "#if `oldextrasymbols' != `newextrasymbols'\n";
-file = file <> "multiply replace_(<den{`oldextrasymbols'+1}_,den(extrasymbol_({`oldextrasymbols'+1}))>\\
+	file = file <> FORMnum[nLoops]; 
+	file = file <> "#if `oldextrasymbols' != `newextrasymbols'\n";
+	file = file <> "multiply replace_(<den{`oldextrasymbols'+1}_,den(extrasymbol_({`oldextrasymbols'+1}))>\\
                   ,...,<den`extrasymbols_'_,den(extrasymbol_(`extrasymbols_'))>);\n";
-file = file <> "#endif\n";
-file = file <> "#endif\n.sort";
-file = file <> "
+	file = file <> "#endif\n";
+	file = file <> "#endif\n.sort";
+];
+	file = file <> "
 Format mathematica;
 Format O"<>ToString[OptimizationLVL]<>", stats=on, method=greedy;
 ExtraSymbols, array, FormEvalStep;
@@ -257,7 +346,7 @@ file
 ]
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*Functions*)
 
 
@@ -288,7 +377,8 @@ Options[cLTD]={
 	"keep_FORM_script"->False,
 	"EvalAll"->False,
 	"NoNumerator"->False,
-	"FORMsubs"->False
+	"FORMsubs"->False,
+	"stdLTD"->False
 };
 cLTD[expression_,OptionsPattern[]]:=Module[{
 expr=If[Head[expression]===Plus,List@@expression, {expression}]/.Global`SP4[p1_,p2_]:> SP4[p1,p2][OptionValue["loopmom"]]/.toLTDprop[OptionValue["loopmom"]],
@@ -298,6 +388,8 @@ runfilename,cLTDfilename,
 FORMpath,
 exec,result, return,cleanKs,cleanProps,FormEvalStep,
 FORMvars={}},
+(*Mathematica has a problem with ~*)
+SetOptions[cLTD,"WorkingDirectory"->StringReplace["~"->$HomeDirectory][OptionValue["WorkingDirectory"]]];
 
 (*Check that the reserved variables are not being used in the input*)
 If[!FreeQ[expression,Global`x|Global`xbar],Print["x and xbar are used internally by FORM. Pease use different variables in your expression"];Abort[]];
@@ -366,7 +458,7 @@ runfilename=OptionValue["WorkingDirectory"]<>"/cLTD_"<>ToString[filenameID]<>".f
 cLTDfilename=OptionValue["WorkingDirectory"]<>"/cLTD_out_"<>ToString[filenameID]<>".out";
 (*Print[{FORMpath,runfilename}];*)
 (*Print[FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],alPATH]];*)
-Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars,OptionValue["OptimizationLVL"]],"Text"];
+Export[runfilename,FORMfile["cLTD_out_"<>ToString[filenameID],FORMinput,Length[loop0subs],FORMvars,OptionValue["OptimizationLVL"],OptionValue["stdLTD"]],"Text"];
 
 exec=If[OptionValue["NoNumerator"],
 	{FORMpath,If[OptionValue["FORMcores"]>1,"-w"<>ToString[OptionValue["FORMcores"]],Nothing],"-D", "NoNumerator",runfilename},
