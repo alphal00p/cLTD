@@ -1,10 +1,10 @@
 cff-version: 1.0.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: [Capatti, Hirschi, Kermanschah, Pelloni, Ruijl]
-    given-names: [Zeno, Valentin, Dario, Andrea, Ben]
+  - family-names: Capatti, Hirschi, Kermanschah, Pelloni, Ruijl
+    given-names: Zeno, Valentin, Dario, Andrea, Ben
     orcid: https://orcid.org/0000-0003-4925-7248
-title: "My Research Software"
-version: 2.0.0
+title: "cLTD"
+version: 1.0.0
 doi: 10.48550/arXiv.2009.05509
 date-released: 2020-09-11
