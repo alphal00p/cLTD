@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7215412.svg)](https://doi.org/10.5281/zenodo.7215412)
 #
 # cLTD - Causal Loop-Tree Duality
 **Authors**: Z. Capatti, V. Hirschi, D. Kermanschah, A. Pelloni, B. Ruijl
