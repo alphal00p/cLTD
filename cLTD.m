@@ -11,7 +11,7 @@ BeginPackage["cLTD`"];
 (*Global *)
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Usage*)
 
 
@@ -60,7 +60,7 @@ Print["\tA Mathematica front end for cLTD [arxiv:2009.05509].\n"];
 Begin["cLTDPrivate`"];
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*FORM file*)
 
 
@@ -346,7 +346,7 @@ file
 ]
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Functions*)
 
 
@@ -487,3 +487,463 @@ SetAttributes[cLTD,Protected];
 
 End[];
 EndPackage[];
+
+
+(* ::Subsection::Closed:: *)
+(*Cross - free family LTD expression generator*)
+
+
+(* ::Subsubsection::Closed:: *)
+(*Graph builders*)
+
+
+(* ::Input::Initialization:: *)
+cFFAssignSignaturesStartingFromEdge[g_Graph,startingVertex_,InputSignatures_]:=Module[
+{allIncomingEdges, allOutgoingEdges,otherVertexAndDirection,edgesWithoutSignature,signatures},
+signatures=Association[Table[
+k->InputSignatures[k],{k,Keys[InputSignatures]}]];
+allIncomingEdges=EdgeList[g,DirectedEdge[_,startingVertex,_]];
+allOutgoingEdges=EdgeList[g,DirectedEdge[startingVertex,_,_]];
+edgesWithoutSignature=Select[Join[allIncomingEdges,allOutgoingEdges],Not[MemberQ[Keys[signatures],#]]&];
+
+If[Length[edgesWithoutSignature]==1,
+Do[
+otherVertexAndDirection=e/.{DirectedEdge[startingVertex,a_,_]:>{a,1},DirectedEdge[a_,startingVertex,_]:>{a,-1}};
+AssociateTo[signatures,e->(otherVertexAndDirection[[2]]*(
+Total[Table[signatures[eIN],{eIN,Select[allIncomingEdges,MemberQ[Keys[signatures],#]&]}]]
+-Total[Table[signatures[eOUT],{eOUT,Select[allOutgoingEdges,MemberQ[Keys[signatures],#]&]}]]
+))];
+signatures=cFFAssignSignaturesStartingFromEdge[g,otherVertexAndDirection[[1]],signatures];
+,{e,edgesWithoutSignature}];
+];
+signatures
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGetEdgeSignatures[g_Graph,OptionsPattern[{lmb->Automatic}]]:=Module[
+{spanningTree,selectedLMB, leaves,startEdge, signatures,externalVertices,externalEdges, tmpA,leafEdge},
+externalVertices=Sort[Select[VertexList[g],VertexDegree[g,#]===1&]];
+If[
+OptionValue[lmb]===Automatic,
+spanningTree=FindSpanningTree[g];
+selectedLMB=SortBy[Complement[
+EdgeList[g],
+EdgeList[spanningTree]
+],(#/.{DirectedEdge[a_,b_,name_]:>name})&];
+,
+spanningTree=DirectedGraph[Select[EdgeList[g],Not[MemberQ[OptionValue[lmb],(#/.{DirectedEdge[a_,b_,id_]:>id})]]&]];
+selectedLMB=SortBy[
+Select[EdgeList[g],MemberQ[OptionValue[lmb],(#/.{DirectedEdge[a_,b_,id_]:>id})]&],
+Position[OptionValue[lmb],(#/.{DirectedEdge[a_,b_,id_]:>id})][[1]][[1]]&
+];
+];
+
+(* Assign signatures to externals now *)
+signatures=Association[Table[
+tmpA=EdgeList[g,DirectedEdge[externalVertices[[iev]],_,_]];
+(* It is much simpler if we force all externals incoming so check for this here *)
+If[ Length[tmpA]!=1,Print["ERROR: please define all externals as incoming in your topology."];Return[Null];];
+tmpA = If[Length[tmpA]==1,tmpA[[1]],EdgeList[g,DirectedEdge[_,externalVertices[[iev]],_]][[1]]];
+tmpA->{Table[0,{i,Length[selectedLMB]}],Table[If[iev===j,1,0],{j,Length[externalVertices]}]}
+,{iev,Length[externalVertices]}
+]];
+
+(* And LMB edges now *)
+signatures=AssociateTo[signatures,
+Table[
+selectedLMB[[ie]]->{Table[If[ie===j,1,0],{j,Length[selectedLMB]}],Table[0,{i,Length[externalVertices]}]},{ie,Length[selectedLMB]}
+]
+];
+
+(* And all others now *)
+leaves=Select[VertexList[spanningTree],VertexDegree[spanningTree,#]===1&];
+leaves=Table[
+leafEdge=EdgeList[spanningTree,DirectedEdge[leaf,_,_]];
+If[Length[leafEdge]==1,
+leafEdge=leafEdge[[1]];
+If[MemberQ[Keys[signatures],leafEdge],
+leafEdge/.{DirectedEdge[_,x_,_]:>x},leaf],
+leafEdge=EdgeList[spanningTree,DirectedEdge[_,leaf,_]][[1]];
+If[MemberQ[Keys[signatures],leafEdge],
+leafEdge/.{DirectedEdge[x_,_,_]:>x},leaf]
+]
+,{leaf,leaves}];
+Do[signatures=cFFAssignSignaturesStartingFromEdge[g,leaf,signatures];,{leaf,leaves}];
+
+signatures
+
+]
+
+
+(* ::Input::Initialization:: *)
+AssignSignatures[INg_Graph,OptionsPattern[{masses->Null,lmb->Automatic}]]:=Module[{g,signatures},
+g=DirectedGraph[Table[EdgeList[INg][[ie]]/.{DirectedEdge[a_,b_]:>DirectedEdge[a,b,ie]},{ie,Length[EdgeList[INg]]}]];
+signatures= cFFGetEdgeSignatures[g,lmb->OptionValue[lmb]];
+DirectedGraph[Table[e/.{DirectedEdge[a_,b_,c_]:>DirectedEdge[a,b,
+<|"id"->c,"sig"->signatures[e],"mass"->If[OptionValue[masses]===Null,0,If[MemberQ[Keys[OptionValue[masses]],c],OptionValue[masses][c],0]]|>
+]},{e,EdgeList[g]}],VertexLabels->Automatic,EdgeLabels->None]
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGenerateMomentaLabels[g_Graph]:=Module[
+{oneSig},
+oneSig=(EdgeList[g][[1]]/.{DirectedEdge[_,_,props_]:>props})["sig"];
+{
+Table[ToExpression["k"<>ToString[i]],{i,Length[oneSig[[1]]]}],
+Table[ToExpression["p"<>ToString[i]],{i,Length[oneSig[[2]]]}]
+}
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGetLMBEdges[g_Graph]:=Module[
+{lmbEdges},
+lmbEdges=Select[EdgeList[g],(Function[s,And[AllTrue[s[[2]],Function[si,si===0]],Count[s[[1]],0]===Length[s[[1]]]-1,Count[s[[1]],1]===1]]@((#/.{DirectedEdge[_,_,props_]:>props})["sig"]))&];
+lmbEdges=SortBy[lmbEdges,Position[(#/.{DirectedEdge[_,_,props_]:>props})["sig"][[1]],1][[1]][[1]]&];
+DeleteDuplicatesBy[lmbEdges,(#/.{DirectedEdge[_,_,props_]:>props})["sig"]&]
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGetExternalEdges[g_Graph]:=Module[
+{externalEdges},
+externalEdges=Select[EdgeList[g],(Function[s,And[AllTrue[s[[1]],Function[si,si===0]],Count[s[[2]],0]===Length[s[[2]]]-1,Count[s[[2]],1]===1]]@((#/.{DirectedEdge[_,_,props_]:>props})["sig"]))&];
+externalEdges=SortBy[externalEdges,Position[(#/.{DirectedEdge[_,_,props_]:>props})["sig"][[2]],1][[1]][[1]]&]
+]
+
+
+(* ::Subsubsection::Closed:: *)
+(*cFF Generator*)
+
+
+(* ::Input::Initialization:: *)
+cFFBugFixedEdgeContract[g_Graph,edgeToContract_]:=Module[{nodeToMap,newEdges},
+nodeToMap=(edgeToContract/.{DirectedEdge[a_,b_,_]:>{a->b}});
+newEdges=Table[e/.{DirectedEdge[a_,b_,props_]:>DirectedEdge[a/.nodeToMap,b/.nodeToMap,props]},{e,DeleteCases[EdgeList[g],edgeToContract]}];
+(* Remove self-loops too here *)
+newEdges=Select[newEdges,(#/.DirectedEdge[a_,b_,_]:>a!=b)&];
+DirectedGraph[newEdges]
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGraphContributeToCFFQ[g_Graph]:=AcyclicGraphQ[g]
+
+
+(* ::Input::Initialization:: *)
+cFFEnumerateAcyclicOrientations[g_Graph,OptionsPattern[{Orientations->Automatic}]]:=Module[
+{el,allOrientations},
+el=EdgeList[g];
+allOrientations=Select[
+Table[
+{o,DirectedGraph[Table[If[o[[iE]],el[[iE]]/.{DirectedEdge[a_,b_,name_]:>DirectedEdge[b,a,name]},el[[iE]]],{iE,Length[el]}],VertexLabels->Automatic,EdgeLabels->Automatic]},{o,Tuples[{True,False},Length[el]]}]
+,cFFGraphContributeToCFFQ[#[[2]]]&
+];
+If[OptionValue[Orientations]===Automatic,allOrientations,
+Select[allOrientations,
+MemberQ[OptionValue[Orientations],#[[1]]]&
+]
+]
+]
+
+
+(* ::Input::Initialization:: *)
+cFFCrossFreeFamilyReduce[g_Graph,OptionsPattern[{ConvertToNormalisedFormat->False,DEBUG->False}]]:=Module[
+{EsurfaceSign,sources, sinks,nodeSelected,allEdgesToDelete,allTerms,Esurf,allContractedGraphs},
+
+If[OptionValue[DEBUG],
+Print[StringJoin[Table["-",{i,Range[60]}]]];
+Print["Now considering the following graph:"];
+Print[DirectedGraph[g,VertexLabels->Automatic,
+EdgeLabels->Table[e->(e/.{DirectedEdge[_,_,props_]:>props})["id"],{e,EdgeList[g]}]
+]];
+];
+
+If[Length[VertexList[g]]==2,
+Esurf=Table[e/.{DirectedEdge[a_,b_,name_]:>name["id"]},{e,EdgeList[g]}];
+If[OptionValue[DEBUG],Print["Reached termination condition, returning Esurf:",Esurf];];
+EsurfaceSign=1;
+If[OptionValue[ConvertToNormalisedFormat],
+Return[{{{EsurfaceSign,Esurf}}}];,Return[EsurfaceSign(1/Total[Table[OSE[name],{name,Esurf}]])];
+];
+];
+
+sources=GraphComputation`SourceVertexList[g];
+sinks=GraphComputation`SinkVertexList[g];
+If[OptionValue[DEBUG],Print["Found the following sources and sinks(first eligible one will be considered):\nsource ",sources,"\nsinks ",sinks];];
+nodeSelected=None;
+Do[
+If[
+Length[WeaklyConnectedComponents[Graph[VertexList[g],Select[EdgeList[g],Not[MatchQ[#,DirectedEdge[s,_,_]]]&]]]]<=2,
+nodeSelected=s;
+allEdgesToDelete=EdgeList[g,DirectedEdge[nodeSelected,_,_]];
+EsurfaceSign=1;
+Break[];
+];
+,{s,sources}
+];
+Do[
+If[
+Length[WeaklyConnectedComponents[Graph[VertexList[g],Select[EdgeList[g],Not[MatchQ[#,DirectedEdge[_,s,_]]]&]]]]<=2,
+nodeSelected=s;
+allEdgesToDelete=EdgeList[g,DirectedEdge[_,nodeSelected,_]];
+EsurfaceSign=1;
+Break[];
+];
+,{s,sinks}
+];
+
+If[nodeSelected===None,Print["Could not find an eligible source or sink for the following graph:"];Print[g];];
+
+allContractedGraphs=Select[
+Table[{edgeToDelete,cFFBugFixedEdgeContract[g,edgeToDelete]},{edgeToDelete,allEdgesToDelete}]
+,cFFGraphContributeToCFFQ[#[[2]]]&];
+allContractedGraphs=DeleteDuplicatesBy[allContractedGraphs,#[[2]]&];
+
+If[OptionValue[DEBUG],
+Print["Edges to be contracted (possibly won't contribute all): ",Table[(e/.{(DirectedEdge[a_,b_,props_]:>props)})["id"],{e,allEdgesToDelete}]];Print["Contributing edge contractions: ",
+Table[eInfo[[1]],{eInfo,allContractedGraphs}
+]];
+];
+
+Esurf={EsurfaceSign,Table[e/.{DirectedEdge[a_,b_,name_]:>name["id"]},{e,allEdgesToDelete}]};
+If[OptionValue[DEBUG],Print["Esurf for this term: ",Esurf];];
+If[Not[OptionValue[ConvertToNormalisedFormat]],
+Esurf=Esurf[[1]]*Total[Table[OSE[name],{name,Esurf[[2]]}]];
+];
+allTerms=((cFFCrossFreeFamilyReduce[#[[2]],ConvertToNormalisedFormat->OptionValue[ConvertToNormalisedFormat],DEBUG->OptionValue[DEBUG]])&)/@allContractedGraphs;
+
+If[Not[OptionValue[ConvertToNormalisedFormat]],
+If[OptionValue[DEBUG],
+Print["Complete term returned at this level: ",1/Esurf Total[allTerms]];
+Print[StringJoin[Table["-",{i,Range[60]}]]];
+];
+1/Esurf Total[allTerms],
+Flatten[Table[Table[Prepend[ti,Esurf],{ti,t}],{t,allTerms}],1]
+]
+
+]
+
+
+(* ::Input::Initialization:: *)
+cFFGenerateEnergyShiftSignatureForEsurf[g_Graph,edgeCuts_,flipConfiguration_]:=Module[
+{edgesCut},
+edgesCut=Select[EdgeList[g],MemberQ[edgeCuts,(#/.DirectedEdge[_,_,props_]:>props)["id"]]&];
+-Total[Table[flipConfiguration[e]*((e/.DirectedEdge[_,_,props_]:>props)["sig"][[2]]),{e,edgesCut}]]
+]
+
+
+(* ::Input::Initialization:: *)
+CrossFreeFamilyLTD[g_Graph,OptionsPattern[{ConvertToNormalisedFormat->False,DEBUG->False,Orientations->Automatic}]]:=Module[
+{allTerms,reducedGraph, flipConfiguration,allOrientations},
+
+(* act on the reduced graph stripped off external for now *)
+reducedGraph=GraphDifference[g,DirectedGraph[cFFGetExternalEdges[g]]];
+allOrientations=cFFEnumerateAcyclicOrientations[reducedGraph,Orientations->OptionValue[Orientations]];
+Monitor[
+allTerms=Table[{allOrientations[[iacg]][[1]],
+If[OptionValue[DEBUG],Print["Now considering orientation: "<>ToString[Table[If[o,-1,1],{o,allOrientations[[iacg]][[1]]}]]]];
+cFFCrossFreeFamilyReduce[allOrientations[[iacg]][[2]],
+ConvertToNormalisedFormat->OptionValue[ConvertToNormalisedFormat],DEBUG->OptionValue[DEBUG]
+]},{iacg,Length[allOrientations]}];,
+ToString["Evaluating orientation #"<>ToString[iacg]<>"/"<>ToString[Length[allOrientations]]<>" ("<>ToString[Round[100.(iacg/Length[allOrientations]),0.01]]<>"%)"]
+];
+If[Not[OptionValue[ConvertToNormalisedFormat]],
+allTerms,
+Table[
+flipConfiguration=Association[(Table[#[[iE]]->If[o[[1]][[iE]],-1,1],{iE,Length[#]}]&)@EdgeList[reducedGraph]];
+<|
+"Orientation"->Association[Table[(EdgeList[reducedGraph][[iOrientation]]/.{DirectedEdge[_,_,props_]:>props})["id"]->If[o[[1]][[iOrientation]],-1,1],{iOrientation,Length[o[[1]]]}]],
+"Terms"->Table[<|
+"Num"->(1),
+"Orderings"->Null,
+"Esurfs"->Table[
+<|
+"overall_sign"->ti[[1]],
+"OSE"->ti[[2]],
+"shift_signature"->cFFGenerateEnergyShiftSignatureForEsurf[g,ti[[2]],flipConfiguration]
+|>
+,{ti,t}]
+|>,{t,o[[2]]}]
+|>
+,{o,allTerms}
+]
+]
+]
+
+
+(* ::Subsubsection::Closed:: *)
+(*Evaluators*)
+
+
+(* ::Input::Initialization:: *)
+cFFCountOPs[expr_]:=Module[{leaves},
+leaves=Level[expr,{-1},Heads->True];
+Select[Tally[leaves],MemberQ[{Times,Power,Plus},#[[1]]]&]
+]
+
+
+(* ::Input::Initialization:: *)
+cFFCompareOPCount[cLTDexpr_,cFFFactorisedExpr_]:=Module[
+{cLTDOPcount,cFFOPcount,opTypes},
+cLTDOPcount=Association[Table[count[[1]]->count[[2]],{count,cFFCountOPs[cLTDexpr[[1]]]}]];
+cFFOPcount=Association[Table[count[[1]]->count[[2]],{count,cFFCountOPs[Total[Table[t[[2]],{t,cFFFactorisedExpr}]]]}]];
+Dataset[
+Table[
+<|"op type"->opType,
+"cLTD"->cLTDOPcount[opType],"cFF"->cFFOPcount[opType],
+"cFF-cLTD"->cFFOPcount[opType]-cLTDOPcount[opType],
+"\[CapitalDelta](cFF-cLTD) %"->Round[200. (cFFOPcount[opType]-cLTDOPcount[opType])/(cFFOPcount[opType]+cLTDOPcount[opType]),0.1]
+|>
+,{opType,Keys[cLTDOPcount]}]
+]
+]
+
+
+(* ::Input::Initialization:: *)
+GenerateRandomSample[g_Graph,OptionsPattern[{Seed->Automatic}]]:=Module[{momLabels,RNSeed,RN,NumericalSample},
+momLabels=cFFGenerateMomentaLabels[g];
+RNSeed=If[OptionValue[Seed]===Automatic,RandomInteger[{1,100}],OptionValue[Seed]];
+RN = Table[Prime[i]/Prime[i+1],{i,RNSeed,(3*(Length[momLabels[[1]]]+Max[Length[momLabels[[2]]]-1,0])+Max[Length[momLabels[[2]]]-1,0])+RNSeed-1}];
+NumericalSample=Join[
+Table[momLabels[[1]][[ki+1]]->Table[RN[[ki*3+j]],{j,3}],{ki,0,Length[momLabels[[1]]]-1}],
+If[Length[momLabels[[2]]]>1,
+Join[
+Table[momLabels[[2]][[pi+1]]->Table[RN[[(Length[momLabels[[1]]]+pi)*3+j]],{j,3}],{pi,0,Length[momLabels[[2]]]-2}],
+Table[ToExpression[ToString[momLabels[[2]][[pi]]]<>"E"]->RN[[(Length[momLabels[[1]]]+Length[momLabels[[2]]]-1)*3+pi]],{pi,1,Length[momLabels[[2]]]-1}]
+],
+{}
+]
+];
+If[Length[momLabels[[2]]]>1,
+NumericalSample=Join[NumericalSample,
+{
+momLabels[[2]][[-1]]->Simplify[-Total[momLabels[[2]][[;;-2]]]/.NumericalSample],
+ToExpression[ToString[momLabels[[2]][[-1]]]<>"E"]->Simplify[-Total[Table[ToExpression[ToString[pi]<>"E"],{pi,momLabels[[2]][[;;-2]]}]]/.NumericalSample]
+}
+];,
+If[Length[momLabels[[2]]]==1,
+NumericalSample=Join[NumericalSample,
+{
+momLabels[[2]][[-1]]->{0,0,0},
+ToExpression[ToString[momLabels[[2]][[-1]]]<>"E"]->0
+}
+];
+];
+];
+NumericalSample
+]
+
+
+Options[GeneratecLTDExpression]={
+Num->None,
+	"FORMpath"->"form",
+	"tFORMpath"->"tform","WorkingDirectory"->Check[NotebookDirectory[],Print["Cannot find Notebook Directory!\nMust define the WorkingDirectory option before running."]; None] // Quiet,
+	"FORM_ID"->None,
+	"FORMcores"-> 1, 
+	"OptimizationLVL"->0,
+	"keep_FORM_script"->False,
+	"stdLTD"->False
+};
+
+
+(* ::Input::Initialization:: *)
+GeneratecLTDExpression[g_Graph,OptionsPattern[]]:=Module[
+{props,momLabels,momEnergyLabels,num,cLTDExpr,reducedGraph,signatures},
+momLabels=cFFGenerateMomentaLabels[g];
+momEnergyLabels={Table[ml[0],{ml,momLabels[[1]]}],Table[ml[0],{ml,momLabels[[2]]}]};
+num=If[OptionValue[Num]===None,1,
+signatures=Association[Table[((#["id"]->#["sig"])&)[e/.{DirectedEdge[_,_,props_]:>props}],{e,EdgeList[g]}]];
+Expand[(OptionValue[Num]
+/.{q[i_]:>(signatures[i][[1]] . momLabels[[1]]+signatures[i][[2]] . momLabels[[2]])}
+/.{qE[i_]:>(signatures[i][[1]] . momEnergyLabels[[1]]+signatures[i][[2]] . momEnergyLabels[[2]])}
+)]
+];
+reducedGraph=GraphDifference[g,DirectedGraph[cFFGetExternalEdges[g]]];
+props=Table[(
+ prop[#["sig"][[1]] . momLabels[[1]]+#["sig"][[2]] . momLabels[[2]],#["mass"]]&)@(e/.{DirectedEdge[_,_,props_]:>props}),{e,EdgeList[reducedGraph]}
+];
+
+cLTDExpr = cLTD[num( Times@@ props), NoNumerator -> OptionValue[Num]===None, loopmom -> momLabels[[1]],EvalAll -> True,
+"FORMpath"->OptionValue["FORMpath"],
+"tFORMpath"->OptionValue["tFORMpath"],
+"WorkingDirectory"->OptionValue["WorkingDirectory"],
+"FORM_ID"->OptionValue["FORM_ID"],
+"FORMcores"->OptionValue["FORMcores"],
+"OptimizationLVL"->OptionValue["OptimizationLVL"],
+"keep_FORM_script"->OptionValue["keep_FORM_script"],
+"stdLTD"->OptionValue["stdLTD"]
+];
+cLTDExpr=cLTDExpr/.Table[pi[0]->ToExpression[ToString[pi]<>"E"],{pi,momLabels[[2]]}];
+
+(* Correct for an overall (-1)^Nloops missing when NoNumerator is set to False *)
+cLTDExpr={If[Not[OptionValue[Num]===None],(-1)^Length[momLabels[[1]]],1]cLTDExpr[[1]],cLTDExpr[[2]]};
+
+cLTDExpr
+]
+
+
+(* ::Input::Initialization:: *)
+EvalcLTD[cLTDexpr_,numerics_]:=cLTDexpr[[1]]/.(cLTDexpr[[2]]/.numerics)/.numerics
+
+
+(* ::Input::Initialization:: *)
+ComputeOSEReplacements[g_Graph,numerics_]:=Module[{momLabels,ks,ps,edgeProperties,OSRepl},
+momLabels=cFFGenerateMomentaLabels[g];
+ks=momLabels[[1]];
+ps=momLabels[[2]];
+OSRepl=Table[
+edgeProperties=(e/.DirectedEdge[_,_,props_]:>props);
+OSE[edgeProperties["id"]]:>Evaluate[Sqrt[
+(edgeProperties["sig"][[1]] . ks+edgeProperties["sig"][[2]] . ps) .
+(edgeProperties["sig"][[1]] . ks+edgeProperties["sig"][[2]] . ps)+edgeProperties["mass"]^2
+]/.numerics],{e,EdgeList[g]}
+];
+OSRepl
+]
+
+
+(* ::Input::Initialization:: *)
+EvalcFF[g_Graph,cFFexpr_,numerics_,OptionsPattern[{DEBUG->False, Num->None}]]:=Module[
+{ResPerOrientations,OSEReplacement,ShiftsReplacement,lmbEdges,externalEdges,
+signatures,momLabels,reducedGraph,processedNum, numForThisOrientation,internalOSEs},
+lmbEdges=cFFGetLMBEdges[g];
+externalEdges=cFFGetExternalEdges[g];
+reducedGraph=GraphDifference[g,DirectedGraph[externalEdges]];
+OSEReplacement = ComputeOSEReplacements[g,numerics];
+If[OptionValue[DEBUG],Print["Onshell energy values: ",OSEReplacement];];
+ShiftsReplacement = Table[pE[iExt]:>Evaluate[ToExpression["p"<>ToString[iExt]<>"E"]],{iExt,Length[externalEdges]}]/.numerics;
+If[Not[OptionValue[Num]===None],
+momLabels=cFFGenerateMomentaLabels[g];
+signatures=Association[Table[((#["id"]->#["sig"])&)[e/.{DirectedEdge[_,_,props_]:>props}],{e,EdgeList[g]}]];
+processedNum=TensorExpand[OptionValue[Num]/.{SP4:>Cross}]/.{Cross:>SP4};
+processedNum=((((processedNum
+/.{SP4[a_,b_]:>(a[0]*b[0]-a . b)})/.{q[i_][0]:>qE[i]})
+/.{q[i_]:>(signatures[i][[1]] . momLabels[[1]]+signatures[i][[2]] . momLabels[[2]])})
+/.Table[qE[(externalEdges[[iExt]]/.{DirectedEdge[_,_,props_]:>props})["id"]]:>Evaluate[pE[iExt]],{iExt,Length[externalEdges]}]);
+If[OptionValue[DEBUG],Print["Numerator before numerics substition: ",processedNum];];
+processedNum=processedNum/.ShiftsReplacement/.numerics;
+If[OptionValue[DEBUG],Print["Numerator after numerics substition: ",processedNum];];
+];
+ResPerOrientations=Table[
+If[OptionValue[Num]===None,
+numForThisOrientation=1;
+,
+numForThisOrientation=processedNum/.Table[qE[edgeID]->(t["Orientation"][edgeID]*OSE[edgeID]),{edgeID,Keys[t["Orientation"]]}];
+numForThisOrientation=numForThisOrientation/.OSEReplacement;
+];
+If[OptionValue[DEBUG],Print["Numerator with signed on-shell energies substituted for orienations "<>ToString[t["Orientation"]]<>" : ",numForThisOrientation];];
+Total[Table[
+numForThisOrientation ((st["Num"]/.OSEReplacement)/.numerics)/
+(Times@@Table[
+(eta["overall_sign"]*((Total[Table[OSE[e],{e,eta["OSE"]}]]/.OSEReplacement)+
+((Table[pE[s],{s,Length[externalEdges]}] . eta["shift_signature"])/.ShiftsReplacement)))
+,{eta, st["Esurfs"]}])
+,{st,t["Terms"]}
+]]
+,{t,cFFexpr}
+];
+( (I)^Length[lmbEdges] / ((Times@@Table[-2*OSE[(e/.{DirectedEdge[_,_,props_]:>props})["id"]],{e,EdgeList[reducedGraph]}])/.OSEReplacement) )*Total[ResPerOrientations]
+];
