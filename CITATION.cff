@@ -5,6 +5,6 @@ authors:
     given-names:
     orcid: https://orcid.org/0000-0003-4925-7248
 title: "cLTD"
-version: 1.0.0
-doi: 10.48550/arXiv.2009.05509
+version: 1.1.0
+doi: https://doi.org/10.5281/zenodo.7229437
 date-released: 2020-09-11
