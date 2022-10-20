@@ -886,7 +886,11 @@ cLTDExpr
 
 
 (* ::Input::Initialization:: *)
-EvalcLTD[cLTDexpr_,numerics_]:=cLTDexpr[[1]]/.(cLTDexpr[[2]]/.numerics)/.numerics
+EvalcLTD[cLTDexpr_,numerics_]:=Module[{subs=Rule@@@Transpose[{#,#/.cLTDexpr[[2]]/.numerics}]&@Variables[cLTDexpr[[1]]]},
+Block[Evaluate[First/@subs],
+subs/.Rule->Set;cLTDexpr[[1]]
+]
+]
 
 
 (* ::Input::Initialization:: *)
