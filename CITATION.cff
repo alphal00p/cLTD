@@ -1,10 +1,22 @@
-cff-version: 1.0.0
+cff-version: 1.1.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Z. Capatti, V. Hirschi, D. Kermanschah, A. Pelloni, B. Ruijl
-    given-names:
-    orcid: https://orcid.org/0000-0003-4925-7248
+  - family-names: Capatti, V. Hirschi, D. Kermanschah, A. Pelloni, B. Ruijl
+    given-names: Zeno
+    orcid:
+  - family-names: Hirschi
+    given-names: Valentin
+    orcid: https://orcid.org/0000-0002-8908-6300
+  - family-names: Kermanschah
+    given-names: Dario
+    orcid:
+  - family-names: Pelloni
+    given-names: Andrea
+    orcid: https://orcid.org/0000-0002-2747-0024
+  - family-names: Ruijl
+    given-names: Ben
+    orcid: https://orcid.org/0000-0003-0514-1163
 title: "cLTD"
-version: 1.0.0
-doi: 10.48550/arXiv.2009.05509
+version: 1.1.0
+doi: https://doi.org/10.5281/zenodo.7229437
 date-released: 2020-09-11
