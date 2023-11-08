@@ -489,7 +489,7 @@ End[];
 EndPackage[];
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*Cross - free family LTD expression generator*)
 
 
@@ -774,7 +774,7 @@ flipConfiguration=Association[(Table[#[[iE]]->If[o[[1]][[iE]],-1,1],{iE,Length[#
 ]
 
 
-(* ::Subsubsection::Closed:: *)
+(* ::Subsubsection:: *)
 (*Evaluators*)
 
 
@@ -879,7 +879,7 @@ cLTDExpr = cLTD[num( Times@@ props), NoNumerator -> OptionValue[Num]===None, loo
 cLTDExpr=cLTDExpr/.Table[pi[0]->ToExpression[ToString[pi]<>"E"],{pi,momLabels[[2]]}];
 
 (* Correct for an overall (-1)^Nloops missing when NoNumerator is set to False *)
-cLTDExpr={If[Not[OptionValue[Num]===None],(-1)^Length[momLabels[[1]]],1]cLTDExpr[[1]],cLTDExpr[[2]]};
+cLTDExpr={If[OptionValue[Num]===None,(-1)^Length[momLabels[[1]]],1]cLTDExpr[[1]],cLTDExpr[[2]]};
 
 cLTDExpr
 ]
@@ -949,5 +949,5 @@ numForThisOrientation ((st["Num"]/.OSEReplacement)/.numerics)/
 ]]
 ,{t,cFFexpr}
 ];
-( (I)^Length[lmbEdges] / ((Times@@Table[-2*OSE[(e/.{DirectedEdge[_,_,props_]:>props})["id"]],{e,EdgeList[reducedGraph]}])/.OSEReplacement) )*Total[ResPerOrientations]
+( (-I)^Length[lmbEdges] / ((Times@@Table[-2*OSE[(e/.{DirectedEdge[_,_,props_]:>props})["id"]],{e,EdgeList[reducedGraph]}])/.OSEReplacement) )*Total[ResPerOrientations]
 ];
