@@ -614,7 +614,7 @@ externalEdges=SortBy[externalEdges,Position[(#/.{DirectedEdge[_,_,props_]:>props
 ]
 
 
-(* ::Subsubsection::Closed:: *)
+(* ::Subsubsection:: *)
 (*cFF Generator*)
 
 
@@ -887,9 +887,13 @@ cLTDExpr
 
 (* ::Input::Initialization:: *)
 EvalcLTD[cLTDexpr_,numerics_]:=Module[{subs=Rule@@@Transpose[{#,#/.cLTDexpr[[2]]/.numerics}]&@Variables[cLTDexpr[[1]]]},
+(*The Block construction below no longer works in Mathematica v14.1 *)
+(*
 Block[Evaluate[First/@subs],
 subs/.Rule->Set;cLTDexpr[[1]]
 ]
+*)
+cLTDexpr[[1]]/.subs
 ]
 
 
@@ -922,7 +926,7 @@ ShiftsReplacement = Table[pE[iExt]:>Evaluate[ToExpression["p"<>ToString[iExt]<>"
 If[Not[OptionValue[Num]===None],
 momLabels=cFFGenerateMomentaLabels[g];
 signatures=Association[Table[((#["id"]->#["sig"])&)[e/.{DirectedEdge[_,_,props_]:>props}],{e,EdgeList[g]}]];
-processedNum=TensorExpand[OptionValue[Num]/.{SP4:>Cross}]/.{Cross:>SP4};
+processedNum=TensorExpand[OptionValue[Num]/ .{SP4[a_,b_]:>Cross[a/.{v_[i_]:>L[v[i]]},b/.{v_[i_]:>R[v[i]]}]}]/.{Cross[L[a_],R[b_]]:>SP4[a,b]};
 processedNum=((((processedNum
 /.{SP4[a_,b_]:>(a[0]*b[0]-a . b)})/.{q[i_][0]:>qE[i]})
 /.{q[i_]:>(signatures[i][[1]] . momLabels[[1]]+signatures[i][[2]] . momLabels[[2]])})
